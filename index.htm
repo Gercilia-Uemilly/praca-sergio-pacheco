@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Praça Sérgio Pacheco — Portal Colaborativo</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS/JS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <style>
+    :root {
+      --marrom:#6B4F3A;
+      --verde:#4F7F5A;
+      --concreto:#DFEEE4;      /* mais esverdeado */
+      --concreto-mid:#C4D3C5;
+      --carvao:#1A1A1A;
+      --onibus:#2F4F4F;
+      --feira:#6B4F3A;
+      --parquinho:#3F7F58;
+      --banheiro:#7A6C5A;
+    }
+
+    /* Fundo geral com a foto da praça + degradê verde */
+    body{
+      background:
+        linear-gradient(to bottom, rgba(223,238,228,0.95) 0%, rgba(200,220,205,0.9) 40%, rgba(185,201,186,0.9) 100%),
+        url('SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/praca_noite.jpg');
+      background-size: cover;
+      background-attachment: fixed;
+      background-position: center top;
+    }
+
+    @keyframes sunSweep {
+      0%{background-position:-50% 0;opacity:.25}
+      50%{opacity:.4}
+      100%{background-position:150% 0;opacity:.25}
+    }
+
+    @keyframes sunDapple {
+      0%,100%{opacity:.06}
+      50%{opacity:.10}
+    }
+
+    .tree-shadow{
+      animation:sunDapple 12s ease-in-out infinite;
+    }
+
+    .sun-sweep{
+      background-image:radial-gradient(ellipse at center,
+        rgba(255,255,200,.25) 0%,
+        rgba(255,255,200,.10) 25%,
+        rgba(255,255,200,.04) 45%,
+        rgba(255,255,200,0) 60%);
+      background-size:60% 140%;
+      background-repeat:no-repeat;
+      animation:sunSweep 22s linear infinite;
+    }
+
+    .legend-dot{
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:9999px;
+      margin-right:6px;
+      border:1px solid rgba(0,0,0,.2);
+    }
+
+    .poi-icon{
+      width:14px;
+      height:14px;
+      border-radius:9999px;
+      border:2px solid rgba(0,0,0,.2);
+      box-shadow:0 0 0 1px rgba(255,255,255,.6) inset;
+    }
+
+    #leaflet-map{
+      width:100%;
+      height:100%;
+    }
+
+    .ctrl-card{
+      backdrop-filter: blur(6px);
+      background: rgba(255,255,255,.85);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-[color:var(--carvao)] overflow-x-hidden">
+
+  <!-- fundo com luz -->
+  <div class="pointer-events-none fixed inset-0 -z-10 sun-sweep"></div>
+
+  <!-- Header / Navegação -->
+  <header class="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-[color:var(--concreto-mid)]">
+    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div aria-hidden class="h-8 w-8 rounded-xl bg-gradient-to-br from-[color:var(--verde)] to-[color:var(--marrom)] shadow-md"></div>
+        <span class="font-semibold tracking-wide text-[#2F4F4F] drop-shadow-sm">
+          Praça Sérgio Pacheco
+        </span>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-2">
+        <a href="#inicio" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/60 hover:bg-[color:var(--verde)]/10 transition">Início</a>
+        <a href="#historia" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">História</a>
+        <a href="#revitalizacao" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">Revitalização</a>
+        <a href="#mapa" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">Mapa</a>
+        <a href="#agenda" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">Agenda</a>
+        <a href="#comunidade" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">Comunidade</a>
+        <a href="#sobre" class="rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-sm bg-white/40 hover:bg-[color:var(--verde)]/10 transition">Sobre</a>
+      </nav>
+
+      <button id="menuBtn" class="md:hidden border border-[color:var(--concreto-mid)] px-3 py-2 rounded-2xl text-sm bg-white/70">
+        Menu
+      </button>
+    </div>
+
+    <div id="mobileMenu" class="hidden md:hidden border-t border-[color:var(--concreto-mid)] bg-white/80">
+      <div class="mx-auto max-w-6xl px-4 py-2 flex flex-col gap-2">
+        <a href="#inicio" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Início</a>
+        <a href="#historia" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">História</a>
+        <a href="#revitalizacao" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Revitalização</a>
+        <a href="#mapa" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Mapa</a>
+        <a href="#agenda" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Agenda</a>
+        <a href="#comunidade" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Comunidade</a>
+        <a href="#sobre" class="border border-[color:var(--concreto-mid)] rounded-2xl px-3 py-2 text-sm hover:bg-[color:var(--verde)]/10 transition">Sobre</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero + mapa -->
+  <section id="inicio" class="relative overflow-hidden">
+    <div class="relative mx-auto max-w-6xl px-4 py-16 grid md:grid-cols-2 gap-10 items-start">
+      <div class="bg-white/80 rounded-3xl p-5 shadow-md border border-[color:var(--concreto-mid)]">
+        <h1 class="text-2xl md:text-3xl font-semibold text-[color:var(--verde)] drop-shadow-sm">
+          Portal Colaborativo da Praça Sérgio Pacheco
+        </h1>
+        <p class="mt-4 text-[#333]/80">
+          Portal colaborativo que conecta memória, projeto arquitetônico e vida cotidiana da praça.
+        </p>
+        <p class="mt-3 text-sm text-[#333]/70">
+          Aqui você encontra a história da praça, o conceito de revitalização desenvolvido em parceria
+          com Arquitetura e Urbanismo, um mapa interativo, agenda de eventos e um espaço para a comunidade.
+        </p>
+
+        <div class="mt-6 flex flex-wrap gap-2">
+          <a href="#historia" class="px-4 py-2 rounded-2xl text-sm font-medium border border-[color:var(--verde)] bg-[color:var(--verde)] text-white shadow-sm hover:opacity-95 active:opacity-90 transition">
+            Ver a história
+          </a>
+          <a href="#revitalizacao" class="px-4 py-2 rounded-2xl text-sm font-medium border border-[color:var(--concreto-mid)] text-[color:var(--carvao)] bg-white/60 hover:bg-[color:var(--verde)]/10 active:bg-[color:var(--verde)]/20 transition">
+            Ver revitalização
+          </a>
+        </div>
+
+        <!-- IMAGEM DA PRAÇA NO INÍCIO -->
+        <div class="mt-6 rounded-3xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img
+            src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/foto praça 4.png"
+            alt="Vista da Praça Sérgio Pacheco"
+            class="w-full"
+          >
+        </div>
+      </div>
+
+      <!-- Mapa Leaflet -->
+      <div id="mapa" class="relative rounded-3xl overflow-hidden shadow-lg border border-[color:var(--concreto-mid)] bg-white/80">
+        <div class="aspect-[4/3]">
+          <div id="leaflet-map"></div>
+        </div>
+
+        <!-- Controles de filtro sobre o mapa -->
+        <div class="absolute top-3 left-3 ctrl-card rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-xs text-[#2F4F4F] shadow-sm">
+          <div class="font-medium mb-1">Filtros</div>
+          <div class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1">
+              <input type="checkbox" data-cat="feira" checked>
+              <span class="legend-dot" style="background:var(--feira)"></span>Feira
+            </label>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" data-cat="parquinho" checked>
+              <span class="legend-dot" style="background:var(--parquinho)"></span>Parquinho
+            </label>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" data-cat="banheiro" checked>
+              <span class="legend-dot" style="background:var(--banheiro)"></span>Banheiro
+            </label>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" data-cat="onibus" checked>
+              <span class="legend-dot" style="background:var(--onibus)"></span>Ônibus
+            </label>
+          </div>
+        </div>
+
+        <!-- Dica -->
+        <div class="absolute bottom-3 left-3 ctrl-card rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-xs text-[#2F4F4F] shadow-sm">
+          ■ Arraste/zoom — clique nos pontos para detalhes.
+          <button id="fitBtn" class="ml-3 px-2 py-1 rounded-xl border border-[color:var(--verde)] text-[color:var(--verde)] hover:bg-[color:var(--verde)]/10">
+            Enquadrar
+          </button>
+          <button id="clearBtn" class="ml-1 px-2 py-1 rounded-xl border border-[color:var(--concreto-mid)] hover:bg-[color:var(--verde)]/10">
+            Limpar
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- História -->
+  <section id="historia" class="relative mx-auto max-w-6xl px-4 pb-16">
+    <div class="absolute -right-10 top-0 w-64 h-64 bg-[url('https://upload.wikimedia.org/wikipedia/commons/9/9a/Small_tree_icon.png')] bg-contain bg-no-repeat opacity-10"></div>
+
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm">
+        História da Praça Sérgio Pacheco
+      </h2>
+
+      <p class="mt-2 text-sm text-[#333]/70 max-w-3xl">
+        A Praça Sérgio Pacheco é um dos espaços públicos mais tradicionais e simbólicos de Uberlândia.
+        Sua história acompanha a modernização da cidade, a criação de áreas de convivência e a
+        transformação do centro urbano em um ponto de encontro para diferentes gerações.
+      </p>
+
+      <!-- Bloco 1 -->
+      <div class="mt-8 grid md:grid-cols-2 gap-6 items-start">
+        <div class="rounded-3xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img src='SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/antigo.jfif' class="w-full">
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-[#2F4F4F]">Origem da Praça</h3>
+          <p class="mt-3 text-sm text-[#333]/80">
+            A Praça Sérgio Pacheco surge no contexto de urbanização e expansão de Uberlândia,
+            especialmente a partir da segunda metade do século XX. O espaço, antes marcado por
+            terrenos abertos e vias em desenvolvimento, foi planejado para ser um ponto central
+            de encontro, circulação e integração da população.
+          </p>
+          <p class="mt-2 text-sm text-[#333]/80">
+            A criação da praça dialoga com a necessidade de áreas públicas que unissem transporte,
+            comércio, lazer e serviços, aproximando a rotina da cidade de um uso mais humano do espaço urbano.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bloco 2 -->
+      <div class="mt-10 grid md:grid-cols-2 gap-6 items-start md:flex-row-reverse">
+        <div class="rounded-3xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/foto praça 3.png" alt="Quadras esportivas da Praça Sérgio Pacheco" class="w-full">
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-[#2F4F4F]">Transformações ao Longo dos Anos</h3>
+          <p class="mt-3 text-sm text-[#333]/80">
+            Ao longo das décadas, a praça passou por diversas intervenções: construção de quadras esportivas,
+            instalação de equipamentos públicos, aumento da arborização e realização de feiras e eventos
+            comunitários. O espaço se consolidou como referência para manifestações populares, atividades
+            culturais e encontros cotidianos.
+          </p>
+          <p class="mt-2 text-sm text-[#333]/80">
+            Sua localização estratégica, próxima a importantes vias e serviços, fez da praça um nó de conexão
+            entre diferentes bairros e realidades sociais da cidade.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bloco 3 -->
+      <div class="mt-10 grid md:grid-cols-2 gap-6 items-start">
+        <div class="rounded-3xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/foto praça.png" alt="Parquinho infantil na Praça Sérgio Pacheco" class="w-full">
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-[#2F4F4F]">A Praça Hoje</h3>
+          <p class="mt-3 text-sm text-[#333]/80">
+            Hoje, a Praça Sérgio Pacheco continua sendo um ponto de encontro, lazer e circulação. O espaço reúne
+            parquinho infantil, quadras, áreas sombreadas, estruturas de apoio e uma forte presença de eventos
+            culturais e feiras populares.
+          </p>
+          <p class="mt-2 text-sm text-[#333]/80">
+            Mais que um lugar de passagem, a praça guarda memórias afetivas, marcas da história urbana e um
+            potencial permanente de revitalização, participação social e valorização do patrimônio público.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Revitalização -->
+  <section id="revitalizacao" class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm">
+        Revitalização da Praça Sérgio Pacheco
+      </h2>
+
+      <!-- Introdução -->
+      <h3 class="mt-4 text-lg font-semibold text-[#2F4F4F]">
+        Introdução à Página de Revitalização
+      </h3>
+      <p class="mt-2 text-sm text-[#333]/80">
+        A página de Revitalização da Praça Sérgio Pacheco foi criada com o objetivo de apresentar, de forma clara,
+        organizada e acessível, as diretrizes do projeto arquitetônico que propõe melhorias estruturais, ambientais
+        e culturais para a praça. Esta seção do site serve como ponte entre o cidadão e o trabalho desenvolvido pelos
+        cursos de Arquitetura e Urbanismo, trazendo informações completas sobre a proposta, seu conceito e sua relação
+        com a história da cidade.
+      </p>
+      <h3 class="mt-6 text-lg font-semibold text-[#2F4F4F]">
+        Conceito Arquitetônico e Paisagístico
+      </h3>
+
+      <p class="mt-2 text-sm text-[#333]/80">
+        O projeto de revitalização da Praça Sérgio Pacheco se desenvolveu com o propósito principal de reconectar
+        a área à sua própria memória urbanística e cultural, valorizando elementos históricos e reinterpretando-os
+        com aspectos contemporâneos. Assim, ao se informar sobre a arquitetura brasileira, é necessário compreender
+        que ela foi desenvolvida ao longo do século XX sob forte influência do movimento moderno, marcado pelo uso
+        do concreto aparente, linhas retas, composição funcional e integração entre espaços internos e externos.
+        Contudo, o país também sempre preservou uma identidade própria, alimentada por tradições construtivas
+        locais, pelo clima tropical e pela intensa relação com a natureza.
+      </p>
+
+      <p class="mt-2 text-sm text-[#333]/80">
+        Nesse sentido, o projeto adota uma releitura do moderno, resgatando seus princípios essenciais, mas
+        incorporando referências da arquitetura brasileira vernacular. O uso de formas orgânicas aproxima a
+        intervenção de uma estética mais fluida e humanizada, rompendo com o rigor geométrico característico
+        do modernismo clássico. Essa escolha dialoga com a paisagem natural e com valores culturais associados
+        à liberdade formal, à expressividade e à integração sensorial com o ambiente.
+      </p>
+
+      <p class="mt-2 text-sm text-[#333]/80">
+        A vegetação, por sua vez, desempenha papel central na proposta, não apenas como elemento estético, mas
+        como componente estruturador do espaço. Ao promover áreas sombreadas, permeabilidade do solo e conforto
+        térmico, o projeto retoma o costume histórico brasileiro de valorizar jardins, pátios internos e áreas
+        livres como extensões naturais da arquitetura. Esse gesto reforça uma prática recorrente desde o período
+        colonial, quando espaços verdes funcionavam como refúgio climático e social.
+      </p>
+
+      <p class="mt-2 text-sm text-[#333]/80">
+        Assim, o projeto de revitalização se constrói no encontro entre passado e presente, ao resgatar memórias
+        da arquitetura brasileira e renová-las a fim de promover uma releitura entre o moderno e o orgânico,
+        trazendo a paisagem para o centro da proposta. O resultado é um espaço que preserva a história, promove
+        identidade, sustentabilidade e a valorização do patrimônio cultural brasileiro.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.30.jpeg"
+          alt="Perspectiva da revitalização da Praça Sérgio Pacheco"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.39.jpeg"
+          alt="Elementos paisagísticos da nova proposta"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.43.jpeg"
+          alt="Vista aérea da proposta de revitalização"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.46.jpeg"
+          alt="Setor da praça com novo tratamento paisagístico"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.50.jpeg"
+          alt="Circulações e espaços de convivência projetados"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.55.jpeg"
+          alt="Integração entre caminhos e áreas verdes"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.04.58.jpeg"
+          alt="Detalhe da composição entre arquitetura e paisagem"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.05.01.jpeg"
+          alt="Espaços sombreados para permanência dos usuários"
+          class="rounded-lg shadow"
+        >
+
+        <img
+          src="SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/WhatsApp Image 2025-12-01 at 15.05.05.jpeg"
+          alt="Vista geral do conjunto revitalizado"
+          class="rounded-lg shadow"
+        >
+      </div>
+    </div>
+  </section>
+
+  <!-- Agenda Cultural -->
+  <section id="agenda" class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm">
+        Agenda Cultural
+      </h2>
+
+      <p class="mt-2 text-sm text-[#333]/70 max-w-3xl">
+        A agenda reúne os principais eventos que acontecem na Praça Sérgio Pacheco ao longo do ano:
+        feiras populares, festivais musicais, intervenções artísticas, celebrações temáticas e
+        apresentações comunitárias.
+      </p>
+
+      <!-- LISTA DE EVENTOS COM BOTÕES -->
+      <div class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Evento 1 -->
+        <article class="rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-4 shadow-sm hover:shadow-md transition">
+          <div class="text-xs uppercase tracking-wide text-[#333]/60">Todos os sábados</div>
+          <h3 class="text-base font-medium text-[#2F4F4F] mt-1">Feira da Gente</h3>
+          <p class="mt-1 text-sm text-[#333]/70">
+            Feira tradicional com artesanato, comidas típicas, brechós e pequenos produtores locais.
+          </p>
+          <p class="mt-1 text-xs text-[#333]/60">
+            Horário: 8h às 13h · Local: área central da praça.
+          </p>
+          <div class="mt-3">
+            <a href="#evento-feira" class="px-3 py-1.5 rounded-2xl text-xs font-medium border border-[color:var(--marrom)] text-[color:var(--marrom)] hover:bg-[color:var(--marrom)]/10">
+              Ver detalhes do evento
+            </a>
+          </div>
+        </article>
+
+        <!-- Evento 2 -->
+        <article class="rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-4 shadow-sm hover:shadow-md transition">
+          <div class="text-xs uppercase tracking-wide text-[#333]/60">Datas sazonais</div>
+          <h3 class="text-base font-medium text-[#2F4F4F] mt-1">Show Musical ao Entardecer</h3>
+          <p class="mt-1 text-sm text-[#333]/70">
+            Apresentações de artistas independentes, bandas locais e projetos autorais.
+          </p>
+          <p class="mt-1 text-xs text-[#333]/60">
+            Horário: 17h às 21h · Local: palco principal da praça.
+          </p>
+          <div class="mt-3">
+            <a href="#evento-show" class="px-3 py-1.5 rounded-2xl text-xs font-medium border border-[color:var(--marrom)] text-[color:var(--marrom)] hover:bg-[color:var(--marrom)]/10">
+              Ver detalhes do evento
+            </a>
+          </div>
+        </article>
+
+        <!-- Evento Especial de Natal -->
+        <article class="rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-4 shadow-sm hover:shadow-md transition">
+          <div class="text-xs uppercase tracking-wide text-[#333]/60">Semana do Natal</div>
+          <h3 class="text-base font-medium text-[#2F4F4F] mt-1">Especial de Natal na Praça</h3>
+          <p class="mt-1 text-sm text-[#333]/70">
+            Programação especial com coral natalino, apresentações culturais, feira temática e iluminação
+            alusiva ao Natal na Praça Sérgio Pacheco.
+          </p>
+          <p class="mt-1 text-xs text-[#333]/60">
+            Horário: 18h às 22h · Local: área central e entorno do palco.
+          </p>
+          <div class="mt-3">
+            <a href="#evento-natal" class="px-3 py-1.5 rounded-2xl text-xs font-medium border border-[color:var(--marrom)] text-[color:var(--marrom)] hover:bg-[color:var(--marrom)]/10">
+              Ver detalhes do evento
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- DETALHES DOS EVENTOS -->
+  <section id="detalhes-eventos" class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm mb-4">
+        Detalhes dos eventos
+      </h2>
+
+      <!-- Feira da Gente -->
+      <article id="evento-feira" class="mb-10 rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-5 shadow-sm">
+        <h3 class="text-lg font-semibold text-[#2F4F4F]">Feira da Gente</h3>
+        <p class="mt-2 text-sm text-[#333]/80">
+          A Feira da Gente é um dos eventos mais tradicionais da Praça Sérgio Pacheco, reunindo artesanato,
+          gastronomia, brechós, hortifrutis, produtos autorais e a criatividade de pequenos empreendedores locais.
+        </p>
+        <ul class="mt-3 text-sm text-[#333]/80 list-disc list-inside">
+          <li><strong>Quando:</strong> todos os sábados, das 8h às 13h;</li>
+          <li><strong>Onde:</strong> área central da praça, próxima ao parquinho;</li>
+          <li><strong>Quem participa:</strong> artesãos, feirantes, coletivos culturais e famílias.</li>
+        </ul>
+
+        <p class="mt-3 text-sm text-[#333]/80">
+          A feira fortalece a economia criativa e o sentimento de pertencimento, aproximando moradores, visitantes
+          e trabalhadores do entorno. É um momento em que a praça se torna mais viva, colorida e ocupada
+          de forma coletiva.
+        </p>
+
+        <div class="mt-4 rounded-2xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img
+            src='SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/feira.jfif'
+            alt="Feira acontecendo na proposta de revitalização da Praça Sérgio Pacheco"
+            class="w-full"
+          >
+        </div>
+
+        <a href="#agenda" class="mt-4 inline-block text-xs font-semibold text-[color:var(--marrom)] hover:underline">
+          ↑ Voltar para a agenda
+        </a>
+      </article>
+
+      <!-- Show Musical -->
+      <article id="evento-show" class="mb-10 rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-5 shadow-sm">
+        <h3 class="text-lg font-semibold text-[#2F4F4F]">Show Musical ao Entardecer</h3>
+        <p class="mt-2 text-sm text-[#333]/80">
+          O Show Musical ao Entardecer transforma a Praça Sérgio Pacheco em palco para artistas independentes e
+          bandas da cena local. A proposta é ocupar o espaço público com música, diversidade e convivência.
+        </p>
+        <ul class="mt-3 text-sm text-[#333]/80 list-disc list-inside">
+          <li><strong>Quando:</strong> datas sazonais, geralmente aos finais de semana;</li>
+          <li><strong>Horário:</strong> 17h às 21h, aproveitando a luz do pôr do sol;</li>
+          <li><strong>Estrutura:</strong> palco montado, área para público, sinalização do projeto de revitalização.</li>
+        </ul>
+
+        <p class="mt-3 text-sm text-[#333]/80">
+          Além das apresentações, o evento pode incluir falas rápidas sobre a importância da ocupação cultural da
+          praça, divulgação de artistas locais e incentivo ao uso do espaço de forma segura, acessível e democrática.
+        </p>
+
+        <div class="mt-4 rounded-2xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img
+            src='SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/timbre.jpg'
+            alt="Palco e público na proposta de revitalização da Praça Sérgio Pacheco"
+            class="w-full"
+          >
+        </div>
+
+        <a href="#agenda" class="mt-4 inline-block text-xs font-semibold text-[color:var(--marrom)] hover:underline">
+          ↑ Voltar para a agenda
+        </a>
+      </article>
+
+      <!-- Especial de Natal -->
+      <article id="evento-natal" class="mb-10 rounded-3xl border border-[color:var(--concreto-mid)] bg-white/80 p-5 shadow-sm">
+        <h3 class="text-lg font-semibold text-[#2F4F4F]">Especial de Natal na Praça</h3>
+        <p class="mt-2 text-sm text-[#333]/80">
+          O Especial de Natal na Praça Sérgio Pacheco reúne famílias, trabalhadores do entorno e visitantes
+          em uma programação afetiva, com foco na ocupação cultural do espaço público e na valorização da
+          memória coletiva da cidade nesta época do ano.
+        </p>
+
+        <ul class="mt-3 text-sm text-[#333]/80 list-disc list-inside">
+          <li><strong>Quando:</strong> semana do Natal, com datas definidas na programação oficial do município;</li>
+          <li><strong>Horário:</strong> 18h às 22h, com atividades ao longo da noite;</li>
+          <li><strong>Atividades:</strong> coral natalino, apresentações musicais, contação de histórias e feira temática;</li>
+          <li><strong>Local:</strong> área central da praça e entorno do palco principal.</li>
+        </ul>
+
+        <p class="mt-3 text-sm text-[#333]/80">
+          A proposta é que o Natal na praça seja um momento de encontro e acolhimento, reforçando o uso do
+          espaço público como lugar de convivência, pertencimento e celebração da diversidade. A iluminação
+          especial e os elementos cenográficos dialogam com o projeto de revitalização, evidenciando caminhos,
+          áreas de estar e pontos de destaque da nova proposta.
+        </p>
+
+        <div class="mt-4 rounded-2xl overflow-hidden shadow-md border border-[color:var(--concreto-mid)] bg-white">
+          <img
+            src='SI Esamc/Interdiciplicar inovação e comunicação/Site Final/project_docs/Imagens/Capturar-natal-2 (1).png'
+            alt="Iluminação e ambientação especial de Natal na proposta de revitalização da Praça Sérgio Pacheco"
+            class="w-full"
+          >
+        </div>
+
+        <a href="#agenda" class="mt-4 inline-block text-xs font-semibold text-[color:var(--marrom)] hover:underline">
+          ↑ Voltar para a agenda
+        </a>
+      </article>
+    </div>
+  </section>
+
+  <!-- Comunidade -->
+  <section id="comunidade" class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm">
+        Comunidade e Participação
+      </h2>
+      <p class="mt-2 text-sm text-[#333]/80 max-w-3xl">
+        Este espaço é dedicado às memórias, relatos e sugestões de quem vive a Praça Sérgio Pacheco no dia a dia.
+        A ideia é que a revitalização seja construída também a partir das vozes da comunidade.
+      </p>
+
+      <div class="mt-6 grid md:grid-cols-2 gap-6">
+        <!-- Caixinha de sugestão / memória -->
+        <div class="rounded-3xl border border-[color:var(--concreto-mid)] bg-white/90 p-4 shadow-sm">
+          <h3 class="text-sm font-semibold text-[#2F4F4F] mb-2">
+            Deixe sua sugestão ou memória da praça
+          </h3>
+          <p class="text-xs text-[#555] mb-2">
+            Escreva um comentário, uma lembrança ou uma ideia de atividade que você gostaria de ver na praça.
+          </p>
+
+          <textarea
+            rows="5"
+            class="w-full rounded-2xl border border-[color:var(--concreto-mid)] px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[color:var(--verde)] focus:border-[color:var(--verde)]"
+            placeholder="Ex: Lembro das tardes de domingo com minha família na praça... Seria legal ter mais eventos culturais aos fins de semana."
+          ></textarea>
+
+          <button
+            type="button"
+            class="mt-3 inline-flex items-center justify-center rounded-2xl px-4 py-2 text-xs font-semibold border border-[color:var(--verde)] text-[color:var(--verde)] bg-white hover:bg-[color:var(--verde)]/10 active:bg-[color:var(--verde)]/20"
+          >
+            Enviar sugestão
+          </button>
+
+          <p class="mt-1 text-[10px] text-[#999]">
+            *Caixinha demonstrativa para o projeto acadêmico. A integração com e-mail ou banco de dados pode ser feita em versões futuras do site.
+          </p>
+        </div>
+
+        <!-- Card lateral com ideias/explicação -->
+        <div class="rounded-3xl border border-[color:var(--concreto-mid)] bg-white/90 p-4 shadow-sm space-y-4">
+          <div>
+            <h3 class="text-sm font-semibold text-[#2F4F4F]">Ideias para uso da praça</h3>
+            <p class="mt-2 text-xs text-[#333]/80">
+              • Espaço para leitura e saraus<br>
+              • Oficinas de arte e grafite autorizado<br>
+              • Encontros de bicicletas, skate e patins<br>
+              • Mutirões de cuidado com o verde<br>
+              • Feiras temáticas (livros, vinil, artes visuais)
+            </p>
+          </div>
+
+          <div class="pt-3 border-t border-[color:var(--concreto-mid)]">
+            <h3 class="text-sm font-semibold text-[#2F4F4F]">Como este espaço pode evoluir</h3>
+            <p class="mt-2 text-xs text-[#333]/80">
+              Em versões futuras, esta caixinha pode ser conectada a:
+            </p>
+            <ul class="mt-1 text-xs text-[#333]/80 list-disc list-inside">
+              <li>Um mural virtual de relatos da praça;</li>
+              <li>Relatórios para auxiliar decisões do poder público;</li>
+              <li>Mapas e linhas do tempo com memórias da comunidade.</li>
+            </ul>
+            <p class="mt-2 text-xs text-[#333]/80">
+              Assim, a praça deixa de ser apenas um lugar de passagem e se torna um espaço narrado
+              por quem vive e ressignifica o território todos os dias.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sobre o Projeto -->
+  <section id="sobre" class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="bg-white/85 rounded-3xl shadow-md border border-[color:var(--concreto-mid)] p-6">
+      <h2 class="text-xl font-medium text-[color:var(--verde)] drop-shadow-sm">
+        Sobre este portal
+      </h2>
+      <p class="mt-2 text-sm text-[#333]/80 max-w-3xl">
+        Este site foi desenvolvido como parte de um projeto interdisciplinar, integrando conteúdos de
+        Inovação e Comunicação, Arquitetura e Urbanismo, Sistemas de Informação e outras áreas. Ele funciona
+        como uma vitrine digital para o projeto de revitalização da Praça Sérgio Pacheco, aproximando teoria,
+        prática acadêmica e realidade urbana.
+      </p>
+      <p class="mt-2 text-sm text-[#333]/80 max-w-3xl">
+        A proposta é que este portal seja colaborativo, aberto a atualizações e melhorias, podendo evoluir
+        para um ambiente em que a população acompanhe a agenda cultural, entenda o projeto arquitetônico
+        e compartilhe suas experiências com a praça.
+      </p>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
+  <footer class="border-t border-[color:var(--concreto-mid)] bg-white/70">
+    <div class="mx-auto max-w-6xl px-4 py-4 text-xs text-[#555] flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+      <span>Projeto Acadêmico – Revitalização da Praça Sérgio Pacheco</span>
+      <span>Desenvolvido em ambiente interdisciplinar ESAMC / parceiros.</span>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // Menu mobile
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    if (menuBtn && mobileMenu) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+
+    // Leaflet mapa
+    const map = L.map('leaflet-map').setView([-18.9128, -48.2622], 15); // Uberlândia aproximado
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Pontos de interesse (exemplo)
+    const poiData = [
+      {
+        lat: -18.9128,
+        lng: -48.2622,
+        cat: 'feira',
+        label: 'Área da Feira da Gente',
+        desc: 'Espaço central da praça usado para feiras populares.'
+      },
+      {
+        lat: -18.9132,
+        lng: -48.2608,
+        cat: 'parquinho',
+        label: 'Parquinho Infantil',
+        desc: 'Área dedicada às crianças, com brinquedos e sombra.'
+      },
+      {
+        lat: -18.9138,
+        lng: -48.2630,
+        cat: 'banheiro',
+        label: 'Estrutura de banheiros',
+        desc: 'Banheiros públicos de apoio à praça.'
+      },
+      {
+        lat: -18.9118,
+        lng: -48.2620,
+        cat: 'onibus',
+        label: 'Ponto de ônibus/integração',
+        desc: 'Acesso ao transporte público no entorno da praça.'
+      }
+    ];
+
+    const markersByCat = {};
+    const allMarkers = [];
+
+    poiData.forEach(p => {
+      const color =
+        p.cat === 'feira' ? 'var(--feira)' :
+        p.cat === 'parquinho' ? 'var(--parquinho)' :
+        p.cat === 'banheiro' ? 'var(--banheiro)' :
+        'var(--onibus)';
+
+      const iconHtml = '<span class="poi-icon" style="background:'+color+';"></span>';
+
+      const marker = L.marker([p.lat, p.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: iconHtml,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        })
+      }).bindPopup('<strong>'+p.label+'</strong><br>'+p.desc);
+
+      marker.addTo(map);
+      allMarkers.push(marker);
+
+      if (!markersByCat[p.cat]) markersByCat[p.cat] = [];
+      markersByCat[p.cat].push(marker);
+    });
+
+    // Filtros
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][data-cat]');
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', () => {
+        const cat = cb.getAttribute('data-cat');
+        const list = markersByCat[cat] || [];
+        list.forEach(m => {
+          if (cb.checked) {
+            m.addTo(map);
+          } else {
+            map.removeLayer(m);
+          }
+        });
+      });
+    });
+
+    // Botão Enquadrar
+    const fitBtn = document.getElementById('fitBtn');
+    if (fitBtn) {
+      fitBtn.addEventListener('click', () => {
+        if (allMarkers.length > 0) {
+          const group = L.featureGroup(allMarkers.filter(m => map.hasLayer(m)));
+          map.fitBounds(group.getBounds(), { padding: [40, 40] });
+        }
+      });
+    }
+
+    // Botão Limpar (fecha popups e centraliza)
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        map.closePopup();
+        map.setView([-18.9128, -48.2622], 15);
+      });
+    }
+  </script>
+</body>
+</html>
